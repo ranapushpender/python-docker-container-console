@@ -19,67 +19,84 @@
 	* client.sent("command\r\n".encode()) eg:- client.send("ls\r\n".encode())
 	* then read again to get output
 	* Note :- send commands using send() only after reading the complete response else the webserver will be busy and you won't get your response
+	* Convert string to bytes using bytes() class as encoding of "/" will break the code
 """
 
 import socket
 import time
 
-def readOutput(client):
-	data = b''
-	while True:
-		response = client.recv(1)
-		print(response[-2:])
-		time.sleep(0.1)
-		data+= response
-		if data[-2:]==(b'# '):
-			break
+class Terminal:
+	def __init__(self,host,port):
+		self.target_host = host
+		self.target_port = port
+		self.client = socket.socket(socket.AF_INET,socket.SOCK_STREAM) #Create TCP Socket Connection
+		self.init_connection()
 	
-
-#POST Request Host
-target_host = "localhost"
-
-
-#Post request port 
-target_port = 8800
-
-#Create TCP Socket Connection
-client = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-
-#request = "GET / HTTP/1.1\r\nHost:%s\r\n\r\n" % target_host
-
-#Parameters for post request of x-www-form-urlenoded
-#data = "stream=1&stdout=1&stdin=1" 
-data = '{"Detach": false, "Tty": true}'
-#data = '{"AttachStdin": true,"AttachStdout": true,"AttachStderr": true,"DetachKeys": "ctrl-p,ctrl-q","Tty": true,"Cmd": ["bash"],"Env": ["FOO=bar","BAZ=quux"]}'
-
-#Request Header
-header = ( """POST /exec/0681bfcc4c756df9cc3a29c88a198f0b15bf67e4b3649aac04ff075346266219/start HTTP/1.1
+	def init_connection(self):
+		data = '{"Detach": false, "Tty": true}'
+		#Request Header
+		header = ( """POST /exec/d3a6c587a603bac8a44930f4c8e9d88eddb40f9b40ba48c85f3b93534148bcf4/start HTTP/1.1
 Content-Type: application/json
 Host: localhost:8800
 Connection: upgrade
 Upgrade: tcp
 """ )
+		content_length = "Content-Length: "+str(len(data))+"\n\n"
+		request = header+content_length+data+"\r\n\r\n"
+#		print(request)
+		self.client.connect((target_host,target_port))
+		self.client.send(request.encode())
+		output = self.read_output().split('\n')
+		print(output[-1])
+		
+	def send_command(self,command):
+		self.client.send(bytes(command+"\r", 'utf-8'))
+		return self.read_output()
+
+	def read_output(self):
+		data = b''
+		while True:
+			response = self.client.recv(1)
+			data+= response
+			#print(response)
+			if data[-2:]==(b'# '):
+				break
+		return data.decode()
+
+	def close_connection(self):
+		self.client.close()
+	
+
+#POST Request Host
+target_host = "localhost"
+
+#Post request port 
+target_port = 8800
+terminal = Terminal(target_host,target_port)
+#command = "cd /bin"
+#print(terminal.send_command(command))
+command = "cd bin"
+print(terminal.send_command(command))
+command = "ls"
+print(terminal.send_command(command))
+terminal.close_connection()
+
+
+#data = '{"AttachStdin": true,"AttachStdout": true,"AttachStderr": true,"DetachKeys": "ctrl-p,ctrl-q","Tty": true,"Cmd": ["bash"],"Env": ["FOO=bar","BAZ=quux"]}'
+
+
 
 #Determining content lengtccch from parameter
-content_length = "Content-Length: "+str(len(data))+"\n\n"
-
-request = header+content_length+data+"\r\n\r\n"
-print(request)
-
-client.connect((target_host,target_port))
-
-client.send(request.encode())
-readOutput(client)
-
-print("Response Recieved")
-
-client.send('cd ls\r\n'.encode())
-readOutput(client)
-
-print("Ended")
 
 
-client.close()
+
+
+
+
+
+
+
+
 
     
 
