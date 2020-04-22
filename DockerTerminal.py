@@ -21,21 +21,43 @@
 	* Note :- send commands using send() only after reading the complete response else the webserver will be busy and you won't get your response
 	* Convert string to bytes using bytes() class as encoding of "/" will break the code
 """
-
 import socket
 import time
+import requests
+import json
 
 class Terminal:
-	def __init__(self,host,port):
+	
+	exec_url_prefix = "http://localhost:8800/containers/"
+	exec_url_suffix = "/exec"
+	headers = {'content-type': 'application/json'}
+	payload = {
+		"AttachStdin": True,
+		"AttachStdout": True,
+		"AttachStderr": True,
+		"DetachKeys": "ctrl-p,ctrl-q",
+		"Tty": True,
+		"Cmd": ["bash"],
+		"Env": ["FOO=bar","BAZ=quux"]
+	}
+	
+	def __init__(self,host,port,cid=""):
 		self.target_host = host
 		self.target_port = port
+		self.cid = cid
+		self.get_exec_id(cid)
 		self.client = socket.socket(socket.AF_INET,socket.SOCK_STREAM) #Create TCP Socket Connection
 		self.init_connection()
 	
+	def get_exec_id(self,cid):
+		response = requests.post(Terminal.exec_url_prefix+cid+Terminal.exec_url_suffix,headers=Terminal.headers,data=json.dumps(Terminal.payload))
+		self.exec_id = response.json()['Id']
+		
+
 	def init_connection(self):
 		data = '{"Detach": false, "Tty": true}'
 		#Request Header
-		header = ( """POST /exec/d3a6c587a603bac8a44930f4c8e9d88eddb40f9b40ba48c85f3b93534148bcf4/start HTTP/1.1
+		header = ( """POST /exec/"""+self.exec_id+"""/start HTTP/1.1
 Content-Type: application/json
 Host: localhost:8800
 Connection: upgrade
@@ -44,14 +66,13 @@ Upgrade: tcp
 		content_length = "Content-Length: "+str(len(data))+"\n\n"
 		request = header+content_length+data+"\r\n\r\n"
 #		print(request)
-		self.client.connect((target_host,target_port))
+		self.client.connect((self.target_host,self.target_port))
 		self.client.send(request.encode())
 		output = self.read_output().split('\n')
 		print(output[-1])
 		
 	def send_command(self,command):
 		self.client.send(bytes(command+"\r", 'utf-8'))
-		return self.read_output()
 
 	def read_output(self):
 		data = b''
@@ -67,31 +88,20 @@ Upgrade: tcp
 		self.client.close()
 	
 
-#POST Request Host
-target_host = "localhost"
+if __name__ == "__main__":
+	target_host = "localhost"
+	target_port = 8800
 
-#Post request port 
-target_port = 8800
-terminal = Terminal(target_host,target_port)
-#command = "cd /bin"
-#print(terminal.send_command(command))
-command = "cd bin"
-print(terminal.send_command(command))
-command = "ls"
-print(terminal.send_command(command))
-terminal.close_connection()
+	terminal = Terminal(target_host,target_port,"183bc47d6823")
+	command = ""
 
-
-#data = '{"AttachStdin": true,"AttachStdout": true,"AttachStderr": true,"DetachKeys": "ctrl-p,ctrl-q","Tty": true,"Cmd": ["bash"],"Env": ["FOO=bar","BAZ=quux"]}'
-
-
-
-#Determining content lengtccch from parameter
-
-
-
-
-
+	while command != "exit":
+		command = input("")
+		if(command=="exit"):
+			break
+		print(terminal.send_command(command),end="")
+		
+	terminal.close_connection()
 
 
 
