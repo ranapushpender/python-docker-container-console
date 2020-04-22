@@ -12,7 +12,62 @@
       <script>
         var term = new Terminal();
         term.open(document.getElementById('terminal'));
+        term.on('key', function(key, e) {
+            myBuffer.push(key);
+            });
+
+            term.on('lineFeed', function() {
+            let keysEntered = myBuffer.join('');  // Or something like that
+            myBuffer = [];  // Empty buffer
+            });
         term.write('Hello\r\ndfd $ ')
+
+        //WebSocket
+        
+        
+        connectExec = (event)=>{
+            console.log("************Opened**************")
+            console.log(event)
+            ws.send(JSON.stringify({
+                type: "begin",
+                cid: "183bc47d6823"
+            }))
+
+            setInterval(()=>{
+                if(ws.readyState==ws.open)
+                {
+                    ws.send('')
+                    console.log("keeping alive")
+                }
+            },1000)
+        }
+        onmessage = (event)=>{
+            console.log(event)
+            let data = JSON.parse(event.data)
+            if(data.type=="status")
+            {
+                console.log("Connected")
+                console.log(ws)
+            }
+            else if(data.type=="error")
+            {
+                console.log("Error : "+data.message)
+                return
+            }
+            else if(data.type=="success")
+            {
+                console.log(data.message)
+            }
+            
+        }
+        onclose = function(){
+            
+            console.log("Closing")
+        }
+
+        
+        
+
       </script>
 </body>
 </html>

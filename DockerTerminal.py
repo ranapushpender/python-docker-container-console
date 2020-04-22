@@ -99,7 +99,8 @@ if __name__ == "__main__":
 		command = input("")
 		if(command=="exit"):
 			break
-		print(terminal.send_command(command),end="")
+		terminal.send_command(command)
+		print(terminal.read_output(),end="")
 		
 	terminal.close_connection()
 
