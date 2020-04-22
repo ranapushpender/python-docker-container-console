@@ -18,10 +18,22 @@
 	* after read complete and you see terminal's root@sdd# then the connection has been upgraded now you can send recieve data using this socket and execute commands as a simple raw stream.
 	* client.sent("command\r\n".encode()) eg:- client.send("ls\r\n".encode())
 	* then read again to get output
+	* Note :- send commands using send() only after reading the complete response else the webserver will be busy and you won't get your response
 """
 
 import socket
 import time
+
+def readOutput(client):
+	data = b''
+	while True:
+		response = client.recv(1)
+		print(response[-2:])
+		time.sleep(0.1)
+		data+= response
+		if data[-2:]==(b'# '):
+			break
+	
 
 #POST Request Host
 target_host = "localhost"
@@ -41,7 +53,7 @@ data = '{"Detach": false, "Tty": true}'
 #data = '{"AttachStdin": true,"AttachStdout": true,"AttachStderr": true,"DetachKeys": "ctrl-p,ctrl-q","Tty": true,"Cmd": ["bash"],"Env": ["FOO=bar","BAZ=quux"]}'
 
 #Request Header
-header = ( """POST /exec/bc28a36cfdd7b80960f36ea152735106ac8ab8d349410c086f968d47daee295e/start HTTP/1.1
+header = ( """POST /exec/0681bfcc4c756df9cc3a29c88a198f0b15bf67e4b3649aac04ff075346266219/start HTTP/1.1
 Content-Type: application/json
 Host: localhost:8800
 Connection: upgrade
@@ -55,26 +67,19 @@ request = header+content_length+data+"\r\n\r\n"
 print(request)
 
 client.connect((target_host,target_port))
-client.send(request.encode())
-data = b''
 
-# receive some data 
-while True:
-    response = client.recv(1)
-    print(response[-2:])
-    time.sleep(0.1)
-    data+= response
-    if data[-2:]==(b'# '):
-    	break
+client.send(request.encode())
+readOutput(client)
 
 print("Response Recieved")
 
-client.send('ls\r\n'.encode())
+client.send('cd ls\r\n'.encode())
+readOutput(client)
 
-while True:
-	response = client.recv(1)
-	print(response)
-	time.sleep(0.1)
+print("Ended")
+
+
+client.close()
 
     
 
