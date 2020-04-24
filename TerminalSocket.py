@@ -33,7 +33,7 @@ if __name__ == "__main__":
                     #print(output)
                     response = {'type':'success','message':""}
             await websocket.send(json.dumps(response))
-            await asyncio.sleep(0.01)
+            
     
     async def response_handler(websocket,terminal):
         while True:
@@ -45,7 +45,7 @@ if __name__ == "__main__":
                 if len(output)>0:
                     print("Output:: "+output)
                     await websocket.send(json.dumps({'type':'success','message':output}))
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.001)
     
     async def read_output(terminal):
         await terminal.read_output()
