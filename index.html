@@ -12,20 +12,23 @@
       <script>
         var term = new Terminal();
         term.open(document.getElementById('terminal'));
-        term.on('key', function(key, e) {
-            myBuffer.push(key);
-            });
-
-            term.on('lineFeed', function() {
-            let keysEntered = myBuffer.join('');  // Or something like that
-            myBuffer = [];  // Empty buffer
-            });
-        term.write('Hello\r\ndfd $ ')
-
-        //WebSocket
-        
-        
-        connectExec = (event)=>{
+        command=""
+        ws = new WebSocket("ws://localhost:8765")
+        term.onKey((event)=>{
+            console.log(event.domEvent.key)
+            if(event.domEvent.key=="Enter")
+            {
+                console.log("HEre")
+                console.log(command)
+                ws.send(JSON.stringify({type:"command",command:command}))
+                command=""
+                return
+            }
+            term.write(event.key)
+            command+= event.key
+        })
+       
+        ws.onopen = (event)=>{
             console.log("************Opened**************")
             console.log(event)
             ws.send(JSON.stringify({
@@ -41,11 +44,12 @@
                 }
             },1000)
         }
-        onmessage = (event)=>{
+        ws.onmessage = (event)=>{
             console.log(event)
             let data = JSON.parse(event.data)
             if(data.type=="status")
             {
+                ws.send(JSON.stringify({type:"command",command:" "}))
                 console.log("Connected")
                 console.log(ws)
             }
@@ -56,11 +60,13 @@
             }
             else if(data.type=="success")
             {
+                term.write(data.message)
                 console.log(data.message)
+                
             }
             
         }
-        onclose = function(){
+        ws.onclose = function(){
             
             console.log("Closing")
         }
