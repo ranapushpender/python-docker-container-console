@@ -25,6 +25,8 @@ import socket
 import time
 import requests
 import json
+import _thread
+from threading import Lock,Thread
 
 class Terminal:
 	
@@ -42,11 +44,15 @@ class Terminal:
 	}
 	
 	def __init__(self,host,port,cid=""):
+		self.lock = Lock()
+		self.buffer = []
 		self.target_host = host
 		self.target_port = port
 		self.cid = cid
 		self.get_exec_id(cid)
 		self.client = socket.socket(socket.AF_INET,socket.SOCK_STREAM) #Create TCP Socket Connection
+		self.client.setblocking(0)
+		self.client.settimeout(100)
 		self.init_connection()
 	
 	def get_exec_id(self,cid):
@@ -68,8 +74,8 @@ Upgrade: tcp
 #		print(request)
 		self.client.connect((self.target_host,self.target_port))
 		self.client.send(request.encode())
-		output = self.read_output().split('\n')
-		print(output[-1])
+		#output = self.read_output().split('\n')
+		#print(output[-1])
 		
 	def send_command(self,command):
 		self.client.send(bytes(command+"\r", 'utf-8'))
@@ -79,29 +85,53 @@ Upgrade: tcp
 		while True:
 			response = self.client.recv(1)
 			data+= response
-			#print(response)
+			self.lock.acquire()
+			self.buffer.append(response.decode())
+			#print(response.decode('utf-8'),end=" ")
+			self.lock.release()
 			if data[-2:]==(b'# '):
-				break
-		return data.decode()
+				#print(data)
+				data=b''
+				#break
+				#pass
 
+	def read_buffer(self):
+		self.lock.acquire()
+		output = self.buffer
+		self.buffer = []
+		self.lock.release()
+		return output
+		
 	def close_connection(self):
 		self.client.close()
 	
 
 if __name__ == "__main__":
+	def print_output(args,a):
+		while True:
+			op = args.read_buffer()
+			time.sleep(0.001)
+			if(len(op)>0):
+				print("".join(op))
+
 	target_host = "localhost"
 	target_port = 8800
 
 	terminal = Terminal(target_host,target_port,"183bc47d6823")
 	command = ""
-
+	
+	t = Thread(target=terminal.read_output,args=tuple())
+	
+	t2= _thread.start_new_thread(print_output,(terminal,1))
+	t.start()
+	#t.run()
 	while command != "exit":
 		command = input("")
 		if(command=="exit"):
 			break
 		terminal.send_command(command)
-		print(terminal.read_output(),end="")
-		
+		#print(terminal.read_output(),end="")
+	t.join()
 	terminal.close_connection()
 
 
