@@ -27,6 +27,7 @@ import requests
 import json
 import _thread
 from threading import Lock,Thread
+import asyncio
 
 class Terminal:
 	
@@ -43,17 +44,22 @@ class Terminal:
 		"Env": ["FOO=bar","BAZ=quux"]
 	}
 	
-	def __init__(self,host,port,cid=""):
-		self.lock = Lock()
-		self.buffer = []
+	def connect(self,host,port,cid=""):
+		
 		self.target_host = host
 		self.target_port = port
 		self.cid = cid
 		self.get_exec_id(cid)
 		self.client = socket.socket(socket.AF_INET,socket.SOCK_STREAM) #Create TCP Socket Connection
 		self.client.setblocking(0)
-		self.client.settimeout(100)
+		self.client.settimeout(0.2)
 		self.init_connection()
+
+	def __init__(self):
+		self.lock = Lock()
+		self.buffer = []
+		self.is_connected = False
+		pass
 	
 	def get_exec_id(self,cid):
 		response = requests.post(Terminal.exec_url_prefix+cid+Terminal.exec_url_suffix,headers=Terminal.headers,data=json.dumps(Terminal.payload))
@@ -76,24 +82,41 @@ Upgrade: tcp
 		self.client.send(request.encode())
 		#output = self.read_output().split('\n')
 		#print(output[-1])
+		self.is_connected = True
 		
 	def send_command(self,command):
 		self.client.send(bytes(command+"\r", 'utf-8'))
 
-	def read_output(self):
-		data = b''
+	async def read_output(self):
+		ctr=0
 		while True:
-			response = self.client.recv(1)
-			data+= response
-			self.lock.acquire()
-			self.buffer.append(response.decode())
-			#print(response.decode('utf-8'),end=" ")
-			self.lock.release()
-			if data[-2:]==(b'# '):
-				#print(data)
-				data=b''
-				#break
-				#pass
+			if self.is_connected:
+				try:
+					response = self.client.recv(1)
+					if not response:
+						await asyncio.sleep(0.1)
+					else:
+						self.lock.acquire()
+						self.buffer.append(response.decode())
+						#print(response.decode('utf-8'),end=" ")
+						self.lock.release()
+						#await asyncio.sleep(0.1)
+						#if data[-2:]==(b'# '):
+							#print(data)
+							#data=b''
+							#break
+							#pass
+			#c		await asyncio.sleep(0.01)
+				except socket.error:
+					print("\n\nSocket Error")
+					await asyncio.sleep(1)
+					ctr=19
+				ctr = ctr + 1
+				if(ctr==20):
+					ctr=0
+					await asyncio.sleep(0.001)
+			else:
+				await asyncio.sleep(1)
 
 	def read_buffer(self):
 		self.lock.acquire()
@@ -115,9 +138,9 @@ if __name__ == "__main__":
 				print("".join(op))
 
 	target_host = "localhost"
-	target_port = 8800
-
-	terminal = Terminal(target_host,target_port,"183bc47d6823")
+	target_port = 8700
+	terminal = Terminal()
+	terminal.connect(target_host,target_port,"183bc47d6823")
 	command = ""
 	
 	t = Thread(target=terminal.read_output,args=tuple())

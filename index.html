@@ -13,7 +13,7 @@
         var term = new Terminal();
         term.open(document.getElementById('terminal'));
         command=""
-        ws = new WebSocket("ws://localhost:8765")
+        ws = new WebSocket("ws://localhost:8766")
         term.onKey((event)=>{
             console.log(event.domEvent.key)
             if(event.domEvent.key=="Enter")
