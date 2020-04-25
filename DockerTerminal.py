@@ -52,7 +52,7 @@ class Terminal:
 		self.get_exec_id(cid)
 		self.client = socket.socket(socket.AF_INET,socket.SOCK_STREAM) #Create TCP Socket Connection
 		self.client.setblocking(0)
-		self.client.settimeout(0.05)
+		self.client.settimeout(0.01)
 		self.init_connection()
 
 	def __init__(self):
@@ -92,7 +92,7 @@ Upgrade: tcp
 		while True:
 			if self.is_connected:
 				try:
-					response = self.client.recv(10)
+					response = self.client.recv(4096)
 					if not response:
 						await asyncio.sleep(0.1)
 					else:
@@ -109,8 +109,8 @@ Upgrade: tcp
 			#c		await asyncio.sleep(0.01)
 				except socket.error:
 					print("\n\nSocket Error")
-					await asyncio.sleep(0.001)
-					ctr=5
+					await asyncio.sleep(0.1)
+					ctr=4
 				ctr = ctr + 1
 				if(ctr==5):
 					ctr=0
@@ -138,7 +138,7 @@ if __name__ == "__main__":
 				print("".join(op))
 
 	target_host = "localhost"
-	target_port = 8700
+	target_port = 8800
 	terminal = Terminal()
 	terminal.connect(target_host,target_port,"183bc47d6823")
 	command = ""
