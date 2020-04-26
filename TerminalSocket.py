@@ -33,31 +33,32 @@ if __name__ == "__main__":
                     #print(output)
                     response = {'type':'success','message':""}
             await websocket.send(json.dumps(response))
-            
     
-    async def response_handler(websocket,terminal):
+    async def read_output(terminal,websocket):
+        ro = terminal.read_output()
         while True:
             if not terminal.is_connected:
                 print("Terminal None")
                 pass
             else:
-                output = "".join(terminal.read_buffer())
-                if len(output)>0:
-                    print("Output:: "+output)
-                    await websocket.send(json.dumps({'type':'success','message':output}))
+                try:
+                    #output = await next(terminal.read_output())
+                    output = await ro.__anext__()
+                    if len(output)>0:
+                        print("Output:: "+output)
+                        await websocket.send(json.dumps({'type':'success','message':output}))
+                except StopIteration:
+                    print("Iteration EMpty")
             await asyncio.sleep(0.001)
-    
-    async def read_output(terminal):
-        await terminal.read_output()
 
     async def hello(websocket, path):
         terminal = Terminal()
         task1 = asyncio.create_task(request_handler(websocket,terminal))
-        task2 = asyncio.create_task(response_handler(websocket,terminal))
+        #task2 = asyncio.create_task(response_handler(websocket,terminal))
         #thread1 = Thread(target=read_output,args=(terminal))
         #thread1.start()
-        task3 = asyncio.create_task(read_output(terminal))
-        await asyncio.gather(task1,task2,task3)
+        task3 = asyncio.create_task(read_output(terminal,websocket))
+        await asyncio.gather(task1,task3)
         #await asyncio.gather(task1,task2)
     
     target_host = "localhost"

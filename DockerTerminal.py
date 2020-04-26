@@ -96,17 +96,7 @@ Upgrade: tcp
 					if not response:
 						await asyncio.sleep(0.1)
 					else:
-						self.lock.acquire()
-						self.buffer.append(response.decode())
-						#print(response.decode('utf-8'),end=" ")
-						self.lock.release()
-						#await asyncio.sleep(0.1)
-						#if data[-2:]==(b'# '):
-							#print(data)
-							#data=b''
-							#break
-							#pass
-			#c		await asyncio.sleep(0.01)
+						yield response.decode()
 				except socket.error:
 					print("\n\nSocket Error")
 					await asyncio.sleep(0.1)
@@ -118,6 +108,7 @@ Upgrade: tcp
 			else:
 				await asyncio.sleep(1)
 
+	#TODO: Need to remove
 	def read_buffer(self):
 		self.lock.acquire()
 		output = self.buffer
