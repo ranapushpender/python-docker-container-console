@@ -44,16 +44,14 @@ class Terminal:
 		"Env": ["FOO=bar","BAZ=quux"]
 	}
 	
-	def connect(self,host,port,cid=""):
+	async def connect(self,host,port,cid=""):
 		
 		self.target_host = host
 		self.target_port = port
 		self.cid = cid
 		self.get_exec_id(cid)
-		self.client = socket.socket(socket.AF_INET,socket.SOCK_STREAM) #Create TCP Socket Connection
-		self.client.setblocking(0)
-		self.client.settimeout(0.01)
-		self.init_connection()
+		self.client = None
+		await self.init_connection()
 
 	def __init__(self):
 		self.lock = Lock()
@@ -66,9 +64,8 @@ class Terminal:
 		self.exec_id = response.json()['Id']
 		
 
-	def init_connection(self):
+	async def init_connection(self):
 		data = '{"Detach": false, "Tty": true}'
-		#Request Header
 		header = ( """POST /exec/"""+self.exec_id+"""/start HTTP/1.1
 Content-Type: application/json
 Host: localhost:8800
@@ -77,36 +74,25 @@ Upgrade: tcp
 """ )
 		content_length = "Content-Length: "+str(len(data))+"\n\n"
 		request = header+content_length+data+"\r\n\r\n"
-#		print(request)
-		self.client.connect((self.target_host,self.target_port))
-		self.client.send(request.encode())
-		#output = self.read_output().split('\n')
-		#print(output[-1])
+		self.reader,self.writer = await asyncio.open_connection(self.target_host,self.target_port)
+		self.writer.write(request.encode())
+		await self.writer.drain()
 		self.is_connected = True
 		
 	def send_command(self,command):
-		self.client.send(bytes(command+"\r", 'utf-8'))
+		self.writer.write(bytes(command+"\r", 'utf-8'))
+		self.writer.drain()
 
 	async def read_output(self):
-		ctr=0
 		while True:
 			if self.is_connected:
 				try:
-					response = self.client.recv(4096)
-					if not response:
-						await asyncio.sleep(0.1)
-					else:
-						yield response.decode()
+					response = await self.reader.read(4096)
+					yield response.decode()
 				except socket.error:
 					print("\n\nSocket Error")
-					await asyncio.sleep(0.1)
-					ctr=4
-				ctr = ctr + 1
-				if(ctr==5):
-					ctr=0
-					await asyncio.sleep(0.001)
 			else:
-				await asyncio.sleep(1)
+				pass
 
 	#TODO: Need to remove
 	def read_buffer(self):

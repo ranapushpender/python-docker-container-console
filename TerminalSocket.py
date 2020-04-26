@@ -19,7 +19,7 @@ if __name__ == "__main__":
 
             if message['type']=="begin":
                 print("Connected")
-                terminal.connect(target_host,target_port,message['cid'])
+                await terminal.connect(target_host,target_port,message['cid'])
                 response = {
                     'type' : "status",
                     'message' : 'connected'
@@ -29,8 +29,6 @@ if __name__ == "__main__":
                     response = {'type':'error','message':'Did not connect'}  
                 else:
                     terminal.send_command(message['command'])
-                    #output = terminal.read_output()
-                    #print(output)
                     response = {'type':'success','message':""}
             await websocket.send(json.dumps(response))
     
@@ -38,28 +36,22 @@ if __name__ == "__main__":
         ro = terminal.read_output()
         while True:
             if not terminal.is_connected:
-                print("Terminal None")
                 pass
             else:
                 try:
-                    #output = await next(terminal.read_output())
                     output = await ro.__anext__()
                     if len(output)>0:
                         print("Output:: "+output)
                         await websocket.send(json.dumps({'type':'success','message':output}))
                 except StopIteration:
                     print("Iteration EMpty")
-            await asyncio.sleep(0.001)
+            await asyncio.sleep(0.01)
 
     async def hello(websocket, path):
         terminal = Terminal()
         task1 = asyncio.create_task(request_handler(websocket,terminal))
-        #task2 = asyncio.create_task(response_handler(websocket,terminal))
-        #thread1 = Thread(target=read_output,args=(terminal))
-        #thread1.start()
-        task3 = asyncio.create_task(read_output(terminal,websocket))
-        await asyncio.gather(task1,task3)
-        #await asyncio.gather(task1,task2)
+        task2 = asyncio.create_task(read_output(terminal,websocket))
+        await asyncio.gather(task1,task2)
     
     target_host = "localhost"
     target_port = 8800
