@@ -20,16 +20,17 @@
             {
                 console.log("HEre")
                 console.log(command)
-                ws.send(JSON.stringify({type:"command",command:command}))
+                ws.send(JSON.stringify({type:"command",command:"\r"}))
                 //command=""
                 return
             }
             else if(event.domEvent.key=="Backspace")
             {
-                term.write('\b \b');
-                command.substring(0,command.length-1)
+                term.write('\b');
+                //command.substring(0,command.length-1)
             }
-            term.write(event.key)
+            //term.write(event.key)
+            ws.send(JSON.stringify({type:"command",command:event.key}))
             command+= event.key
         })
        
@@ -67,10 +68,10 @@
             {
                 //term.write('\x1b[2K\r')    
                 let counter = command.length
-                for(let i=0;i<counter;i++ )
+                /*for(let i=0;i<counter;i++ )
                 {
                     term.write('\b \b')
-                }
+                }*/
                 command = ""
                 term.write(data.message)
                 console.log(data.message)

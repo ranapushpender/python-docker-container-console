@@ -74,13 +74,37 @@ Upgrade: tcp
 """ )
 		content_length = "Content-Length: "+str(len(data))+"\n\n"
 		request = header+content_length+data+"\r\n\r\n"
-		self.reader,self.writer = await asyncio.open_connection(self.target_host,self.target_port)
+		#self.reader,self.writer = await asyncio.open_connection(self.target_host,self.target_port)
+		self.reader,self.writer = await asyncio.open_unix_connection('/var/run/docker.sock')
 		self.writer.write(request.encode())
 		await self.writer.drain()
 		self.is_connected = True
+	
+	def get_command_code(self,command):	
+		"""
+			Special key code definitions
+		"""
+		KEY_UP = b'\x1b[A'
+		KEY_DOWN = b'\x1b[B'
+		KEY_RIGHT = b'\x1b[C'
+		KEY_LEFT = b'\x1b[D'
+		
+		"""
+			If else ladder to send keycode or the command itself
+		"""
+		if command == "ArrowUp":
+			return KEY_UP
+		elif command == "ArrowDown":
+			return KEY_DOWN
+		elif command == "ArrowLeft":
+			return KEY_LEFT
+		elif command == "ArrowRight":
+			return KEY_RIGHT
+		else:
+			return bytes(command, 'utf-8')
 		
 	def send_command(self,command):
-		self.writer.write(bytes(command+"\r", 'utf-8'))
+		self.writer.write(self.get_command_code(command))
 		self.writer.drain()
 
 	async def read_output(self):
