@@ -88,8 +88,6 @@ Upgrade: tcp
 		KEY_DOWN = b'\x1b[B'
 		KEY_RIGHT = b'\x1b[C'
 		KEY_LEFT = b'\x1b[D'
-		BACKSPACE = '\b'
-
 		
 		"""
 			If else ladder to send keycode or the command itself
