@@ -24,11 +24,6 @@
                 //command=""
                 return
             }
-            else if(event.domEvent.key=="Backspace")
-            {
-                term.write('\b');
-                //command.substring(0,command.length-1)
-            }
             //term.write(event.key)
             ws.send(JSON.stringify({type:"command",command:event.key}))
             command+= event.key
