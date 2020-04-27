@@ -49,8 +49,19 @@ class Terminal:
 		self.target_host = host
 		self.target_port = port
 		self.cid = cid
-		self.get_exec_id(cid)
 		self.client = None
+		
+		print("Opening a connection")
+		#Opening tcp connection via asyncio
+		self.reader,self.writer = await asyncio.open_unix_connection('/var/run/docker.sock')
+		print("Connected")
+
+		#Getting exe id for terminal session
+		print("Getting exec id")
+		await self.get_exec_id(cid)
+		print("Got it")
+
+		#Upgrading the connection to TCP
 		await self.init_connection()
 
 	def __init__(self):
@@ -59,23 +70,54 @@ class Terminal:
 		self.is_connected = False
 		pass
 	
-	def get_exec_id(self,cid):
-		response = requests.post(Terminal.exec_url_prefix+cid+Terminal.exec_url_suffix,headers=Terminal.headers,data=json.dumps(Terminal.payload))
-		self.exec_id = response.json()['Id']
+	async def get_exec_id(self,cid):
+		#response = requests.post(Terminal.exec_url_prefix+cid+Terminal.exec_url_suffix,headers=Terminal.headers,data=json.dumps(Terminal.payload))
+		header = ( 
+				   "POST /containers/"+self.cid+"/exec HTTP/1.1\n"+
+				   "Content-Type: application/json\n"+
+				   "Host: localhost:8800\n"+
+				   "Content-Length: "+str(len(json.dumps(self.payload)))+"\n\n"
+				 )
+		request = header + json.dumps(self.payload) + "\r\n\r\n"
+		self.writer.write(request.encode())
+		await self.writer.drain()
 		
+		response = b''
+		while True:
+			data = await self.reader.read(1)
+			response = response + data
+			if response[-4:] == b'\r\n\r\n':
+				print("End reached")
+				break
+		response = response.split(b'\r\n')
+		#print(response)
+		for element in response:
+			if 'Content-Length' in  element.decode():
+				length  = element.decode().split(':')[1]
+				break
+		id = await self.reader.read(int(length))
+		self.exec_id = json.loads(id.decode())["Id"]
+		print(self.exec_id)
 
 	async def init_connection(self):
 		data = '{"Detach": false, "Tty": true}'
-		header = ( """POST /exec/"""+self.exec_id+"""/start HTTP/1.1
-Content-Type: application/json
-Host: localhost:8800
-Connection: upgrade
-Upgrade: tcp
-""" )
+
+		header = ( 
+				   "POST /exec/"+self.exec_id+"/start HTTP/1.1\n"+
+				   "Content-Type: application/json\n"+
+				   "Host: localhost:8800\n"+
+				   "Connection: upgrade\n"+
+			       "Upgrade: tcp\n"
+				 )
+
 		content_length = "Content-Length: "+str(len(data))+"\n\n"
 		request = header+content_length+data+"\r\n\r\n"
-		#self.reader,self.writer = await asyncio.open_connection(self.target_host,self.target_port)
-		self.reader,self.writer = await asyncio.open_unix_connection('/var/run/docker.sock')
+
+		"""
+			Writing our request Detach false means starting interactive session. This upgrades connection to TCP(Can see from response header).
+			Tty = true means we want raw strem of bytes from and to the container's session
+			Tty = false would mean data will be send in format specified by docker api engine attach command docs
+		"""
 		self.writer.write(request.encode())
 		await self.writer.drain()
 		self.is_connected = True
@@ -131,32 +173,16 @@ Upgrade: tcp
 	
 
 if __name__ == "__main__":
-	def print_output(args,a):
-		while True:
-			op = args.read_buffer()
-			time.sleep(0.001)
-			if(len(op)>0):
-				print("".join(op))
-
 	target_host = "localhost"
 	target_port = 8800
 	terminal = Terminal()
-	terminal.connect(target_host,target_port,"183bc47d6823")
+	#terminal.connect(target_host,target_port,"183bc47d6823")
 	command = ""
+
+	loop = asyncio.get_event_loop()
+	task = loop.create_task(terminal.connect(target_host,target_port,"183bc47d6823"))
+	loop.run_until_complete(task)
 	
-	t = Thread(target=terminal.read_output,args=tuple())
-	
-	t2= _thread.start_new_thread(print_output,(terminal,1))
-	t.start()
-	#t.run()
-	while command != "exit":
-		command = input("")
-		if(command=="exit"):
-			break
-		terminal.send_command(command)
-		#print(terminal.read_output(),end="")
-	t.join()
-	terminal.close_connection()
 
 
 
