@@ -99,6 +99,9 @@ class Terminal:
 		self.exec_id = json.loads(id.decode())["Id"]
 		print(self.exec_id)
 
+	"""
+		This function upgrades the current connection with the socket to tcp with docker engine
+	"""
 	async def init_connection(self):
 		data = '{"Detach": false, "Tty": true}'
 
@@ -159,14 +162,6 @@ class Terminal:
 					print("\n\nSocket Error")
 			else:
 				pass
-
-	#TODO: Need to remove
-	def read_buffer(self):
-		self.lock.acquire()
-		output = self.buffer
-		self.buffer = []
-		self.lock.release()
-		return output
 		
 	def close_connection(self):
 		self.client.close()
