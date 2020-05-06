@@ -55,7 +55,7 @@ if __name__ == "__main__":
     
     target_host = "localhost"
     target_port = 8800
-    start_server = websockets.serve(hello, "localhost", 8766)
+    start_server = websockets.serve(hello, "0.0.0.0", 8766)
     asyncio.get_event_loop().set_debug(True)
     asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_forever()
